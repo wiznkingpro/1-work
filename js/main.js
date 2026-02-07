@@ -1,5 +1,70 @@
+let eventBus = new Vue()
+
+Vue.component('product-tabs', {
+    props: {
+        reviews: {
+            type: Array,
+            required: false
+        },
+        shipping: {
+            required: false
+        },
+        details: {
+            type: Array,
+            required: false
+        }
+    },
+    template: `
+<div>
+  <div>   
+    <ul>
+      <span class="tab"
+            :class="{ activeTab: selectedTab === tab }"
+            v-for="(tab, index) in tabs"
+            @click="selectedTab = tab"
+      >{{ tab }}</span>
+    </ul>
+
+    <div v-show="selectedTab === 'Reviews'">
+      <p v-if="!reviews.length">There are no reviews yet.</p>
+      <ul>
+        <li v-for="review in reviews">
+          <p>{{ review.name }}</p>
+          <p>Rating: {{ review.rating }}</p>
+          <p>{{ review.review }}</p>
+        </li>
+      </ul>
+    </div>
+
+    <div v-show="selectedTab === 'Make a Review'">
+      <product-review></product-review>
+    </div>
+  </div>
+  
+      <div v-show="selectedTab === 'Shipping'">
+      <p>Shipping: {{ shipping }}</p>
+    </div>
+    
+    <div v-show="selectedTab === 'Details'">
+      <ul>
+        <li v-for="detail in details">{{ detail }}</li>
+      </ul>
+    </div>
+    </div>
+\`,
+
+ `,
+    data() {
+        return {
+            tabs: ['Reviews', 'Make a Review', 'Shipping', 'Details'],
+            selectedTab: 'Reviews'  // устанавливается с помощью @click
+        }
+    }
+})
+
+
 Vue.component('product-review', {
-   template: `
+    template: `
 
 <form class="review-form" @submit.prevent="onSubmit">
 
@@ -37,43 +102,43 @@ Vue.component('product-review', {
 
 </form>
  `,
-   data() {
-       return {
-           name: null,
-           review: null,
-           rating: null,
-           errors: []
-       }
-   },
-   methods:{
-       onSubmit() {
-           if(this.name && this.review && this.rating) {
-               let productReview = {
-                   name: this.name,
-                   review: this.review,
-                   rating: this.rating
-               }
-               this.$emit('review-submitted', productReview)
-               this.name = null
-               this.review = null
-               this.rating = null
-           } else {
-               if(!this.name) this.errors.push("Name required.")
-               if(!this.review) this.errors.push("Review required.")
-               if(!this.rating) this.errors.push("Rating required.")
-           }
-       }
-   }
+    data() {
+        return {
+            name: null,
+            review: null,
+            rating: null,
+            errors: []
+        }
+    },
+    methods:{
+        onSubmit() {
+            if(this.name && this.review && this.rating) {
+                let productReview = {
+                    name: this.name,
+                    review: this.review,
+                    rating: this.rating
+                }
+                eventBus.$emit('review-submitted', productReview)
+                this.name = null
+                this.review = null
+                this.rating = null
+            } else {
+                if(!this.name) this.errors.push("Name required.")
+                if(!this.review) this.errors.push("Review required.")
+                if(!this.rating) this.errors.push("Rating required.")
+            }
+        }
+    }
 })
 
 Vue.component('product', {
-   props: {
-       premium: {
-           type: Boolean,
-           required: true
-       }
-   },
-   template: `
+    props: {
+        premium: {
+            type: Boolean,
+            required: true
+        }
+    },
+    template: `
    <div class="product">
     <div class="product-image">
            <img :src="image" :alt="altText"/>
@@ -81,6 +146,8 @@ Vue.component('product', {
 
        <div class="product-info">
            <h1>{{ title }}</h1>
+           <p>{{ salesMassage }}</p>
+           <p>{{ sredRating }}</p>
            <p v-if="inStock">In stock</p>
            <p v-else>Out of Stock</p>
            <ul>
@@ -103,83 +170,102 @@ Vue.component('product', {
                Add to cart
            </button>    
        </div>           
+       
        <div>
-            <h2>Reviews</h2>
-            <p v-if="!reviews.length">There are no reviews yet.</p>
-            <ul>
-              <li v-for="review in reviews">
-              <p>{{ review.name }}</p>
-              <p>Rating: {{ review.rating }}</p>
-              <p>{{ review.review }}</p>
-              </li>
-            </ul>
-           </div> <product-review @review-submitted="addReview"></product-review>
+       <product-tabs
+  :reviews="reviews"
+  :shipping="shipping"
+  :details="details"
+></product-tabs>
        </div>
  `,
-   data() {
-       return {
-           product: "Socks",
-           brand: 'Vue Mastery',
-           selectedVariant: 0,
-           altText: "A pair of socks",
-           details: ['80% cotton', '20% polyester', 'Gender-neutral'],
-           variants: [
-               {
-                   variantId: 2234,
-                   variantColor: 'green',
-                   variantImage: "./assets/vmSocks-green-onWhite.jpg",
-                   variantQuantity: 10
-               },
-               {
-                   variantId: 2235,
-                   variantColor: 'blue',
-                   variantImage: "./assets/vmSocks-blue-onWhite.jpg",
-                   variantQuantity: 0
-               }
-           ],
-           reviews: []
-       }
-   },
-   methods: {
-       addToCart() {
-           this.$emit('add-to-cart', this.variants[this.selectedVariant].variantId);
-       },
-       updateProduct(index) {
-           this.selectedVariant = index;
-           console.log(index);
-       },
-       addReview(productReview) {
-           this.reviews.push(productReview)
-       }
-   },
-   computed: {
-       title() {
-           return this.brand + ' ' + this.product;
-       },
-       image() {
-           return this.variants[this.selectedVariant].variantImage;
-       },
-       inStock() {
-           return this.variants[this.selectedVariant].variantQuantity
-       },
-       shipping() {
-           if (this.premium) {
-               return "Free";
-           } else {
-               return 2.99
-           }
-       }
-   }
+    data() {
+        return {
+            product: "Socks",
+            brand: 'Vue Mastery',
+            selectedVariant: 0,
+            altText: "A pair of socks",
+            details: ['80% cotton', '20% polyester', 'Gender-neutral'],
+            variants: [
+                {
+                    variantId: 2234,
+                    variantColor: 'green',
+                    variantImage: "./assets/vmSocks-green-onWhite.jpg",
+                    variantQuantity: 10
+                },
+                {
+                    variantId: 2235,
+                    variantColor: 'blue',
+                    variantImage: "./assets/vmSocks-blue-onWhite.jpg",
+                    variantQuantity: 0
+                }
+            ],
+            reviews: [],
+            sales: 0
+        }
+    },
+    methods: {
+        addToCart() {
+            this.$emit('add-to-cart', this.variants[this.selectedVariant].variantId);
+            this.sales++;
+        },
+        updateProduct(index) {
+            this.selectedVariant = index;
+            console.log(index);
+        }
+    },
+    computed: {
+        title() {
+            return this.brand + ' ' + this.product;
+        },
+        image() {
+            return this.variants[this.selectedVariant].variantImage;
+        },
+        inStock() {
+            return this.variants[this.selectedVariant].variantQuantity
+        },
+        shipping() {
+            if (this.premium) {
+                return "Free";
+            } else {
+                return 2.99
+            }
+        },
+        salesMassage() {
+            if (this.sales === 0) {
+                return 'There are no sales yet'
+            }
+            return 'Sales: ' + this.sales
+        },
+        sredRating() {
+            if (this.reviews.length === 0) {
+                return 'Рейтинга пока нет'
+            }
+
+            let sum = 0
+
+            for (let i = 0; i < this.reviews.length; i++) {
+                sum += Number(this.reviews[i].rating)
+            }
+
+            return 'Рейтинг: ' + (sum / this.reviews.length) + ' / 5'
+        }
+    },
+    mounted() {
+        eventBus.$on('review-submitted', productReview => {
+            this.reviews.push(productReview)
+        })
+    }
 })
 let app = new Vue({
-   el: '#app',
-   data: {
-       premium: true,
-       cart: []
-   },
-   methods: {
-       updateCart(id) {
-           this.cart.push(id);
-       }
-   }
+    el: '#app',
+    data: {
+        premium: true,
+        cart: []
+    },
+    methods: {
+        updateCart(id) {
+            this.cart.push(id);
+        }
+    }
 })
