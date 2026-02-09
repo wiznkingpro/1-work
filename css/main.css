@@ -91,3 +91,29 @@ textarea {
 .nostock{
     text-decoration: line-through;
 }
+
+.size-list {
+            list-style-type: none;
+            padding: 0;
+            display: flex;
+            gap: 10px;
+        }
+        .size-item {
+            border: 1px solid #ccc;
+            padding: 5px 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+        /* Выбранный размер - синий */
+        .active-size {
+            background-color: #1E95EA;
+            color: white;
+            border-color: #1E95EA;
+        }
+        /* Нет в наличии - другой цвет (серый) */
+        .disabled-size {
+            background-color: #eee;
+            color: #aaa;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }

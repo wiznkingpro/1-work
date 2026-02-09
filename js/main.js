@@ -1,18 +1,10 @@
 let eventBus = new Vue()
+
 Vue.component('product-tabs', {
     props: {
-        reviews: {
-            type: Array,
-            required: false,
-        },
-        shippingCost: {
-            type: String,
-            required: true
-        },
-        details: {
-            type: Array,
-            required: true
-        }
+        reviews: { type: Array, required: false },
+        shippingCost: { required: true },
+        details: { type: Array, required: true }
     },
     template: `
             <div>   
@@ -30,7 +22,6 @@ Vue.component('product-tabs', {
                             <p>{{ review.name }}</p>
                             <p>Rating: {{ review.rating }}</p>
                             <p>{{ review.review }}</p>
-                            <p>{{ review.recommendation }}</p>
                         </li>
                     </ul>
                 </div>
@@ -41,7 +32,6 @@ Vue.component('product-tabs', {
                     <p>Shipping is {{ shippingCost }}</p>
                 </div>
                 <div v-show="selectedTab === 'Details'">
-                    <h2>Details:</h2>
                     <ul>
                         <li v-for="detail in details" :key="detail">{{ detail }}</li>
                     </ul>
@@ -56,113 +46,51 @@ Vue.component('product-tabs', {
     }
 })
 
-Vue.component('product-details', {
-    props: {
-        details: {
-            type: Array,
-        }
-    },
-    template: `
-    <ul class="product-details-list">
-      <li v-for="(detail, index) in details" :key="index">
-        {{ detail }}
-      </li>
-    </ul>
-  `
-});
 Vue.component('product-review', {
     template: `
     <form class="review-form" @submit.prevent="onSubmit">
-
-    <p v-if="errors.length">
-     <b>Please correct the following error(s):</b>
-     <ul>
-       <li v-for="error in errors">{{ error }}</li>
-     </ul>
-    </p>
-    
+     <p v-if="errors.length">
+       <b>Please correct the following error(s):</b>
+       <ul><li v-for="error in errors">{{ error }}</li></ul>
+     </p>
      <p>
        <label for="name">Name:</label>
        <input id="name" v-model="name" placeholder="name">
      </p>
-    <p>
-        Would you recommend this product?
-        <div>
-            <label for="yes">Yes</label>
-            <input type="radio" id="yes" name="yes_or_no" value="yes" v-model="recommendation">
-        </div>
-        <div>
-            <label for="no">No</label>
-            <input type="radio" id="no" name="yes_or_no" value="no" v-model="recommendation">
-        </div>
-    </p>
      <p>
        <label for="review">Review:</label>
        <textarea id="review" v-model="review"></textarea>
      </p>
-    
      <p>
        <label for="rating">Rating:</label>
        <select id="rating" v-model.number="rating">
-         <option>5</option>
-         <option>4</option>
-         <option>3</option>
-         <option>2</option>
-         <option>1</option>
+         <option>5</option><option>4</option><option>3</option><option>2</option><option>1</option>
        </select>
      </p>
-    
-     <p>
-       <input type="submit" value="Submit"> 
-     </p>
-    
+     <p><input type="submit" value="Submit"></p>
     </form>
-
  `,
     data() {
-        return {
-            name: '',
-            review: '',
-            rating: null,
-            recommendation: '',
-            errors: []
-        }
+        return { name: '', review: '', rating: null, recommendation: '', errors: [] }
     },
     methods: {
         onSubmit() {
-            this.errors = [];
-            if (this.name && this.review && this.rating && this.recommendation) {
-                const productReview = {
-                    name: this.name,
-                    review: this.review,
-                    rating: this.rating,
-                    recommendation: this.recommendation
-                };
+            if (this.name && this.review && this.rating) {
+                const productReview = { name: this.name, review: this.review, rating: this.rating };
                 eventBus.$emit('review-submitted', productReview);
-                this.resetForm();
+                this.name = ''; this.review = ''; this.rating = null;
             } else {
-                this.errors.push(...[
-                    !this.name && "Name required.",
-                    !this.review && "Review required.",
-                    !this.rating && "Rating required.",
-                    !this.recommendation && "Recommendation required."
-                ].filter(Boolean));
+                if (!this.name) this.errors.push("Name required.")
+                if (!this.review) this.errors.push("Review required.")
+                if (!this.rating) this.errors.push("Rating required.")
             }
-        },
-        resetForm() {
-            this.name = '';
-            this.review = '';
-            this.rating = null;
-            this.recommendation = '';
         }
-}})
+    }
+})
 
 Vue.component('product', {
     props: {
-        premium: {
-            type: Boolean,
-            required: true,
-        }
+        premium: { type: Boolean, required: true }
     },
     template: `
     <div class="product">
@@ -171,81 +99,104 @@ Vue.component('product', {
         </div>
         <div class="product-info">
             <h1>{{ title }}</h1>
-            <span>{{sale}}</span>
-            <span v-else></span>
-            <p>{{ description }}</p>
-            <p v-if="variants[selectedVariant].variantQuantity > 10">
-                Plenty in stock
-            </p>
-            <p v-else-if="variants[selectedVariant].variantQuantity > 0">
-                Almost sold out!
-            </p>
-            <p v-else class="nostock">
-                Out of stock
-            </p>
-            <div
-                    class="color-box"
+            
+            <h2>Price: {{ price }} $</h2>
+            <p v-if="!selectedSize">Select a size to check stock</p>
+            <p v-else-if="currentSizeQty > 10">Plenty in stock</p>
+            <p v-else-if="currentSizeQty > 0">Almost sold out! ({{ currentSizeQty }} left)</p>
+            <p v-else class="nostock" style="color:red">Out of stock</p>
+            
+            <div class="color-box"
                     v-for="(variant, index) in variants"
                     :key="variant.variantId"
-                    :style="{ backgroundColor:variant.variantColor }"
+                    :style="{ backgroundColor: variant.variantColor }"
                     @mouseover="updateProduct(index)"
             ></div>
-            <ul>
-                <li v-for="size in sizes">{{ size }}</li>
+
+            <h3>Sizes:</h3>
+            <ul class="size-list">
+                <li v-for="(sizeObj, index) in variants[selectedVariant].sizes"
+                    :key="index"
+                    class="size-item"
+                    :class="{ 
+                        'disabled-size': sizeObj.qty === 0,
+                        'active-size': selectedSize === sizeObj.name && sizeObj.qty > 0
+                    }"
+                    @click="selectSize(sizeObj)"
+                >
+                    {{ sizeObj.name }}
+                </li>
             </ul>
-            <a v-bind:href="link">More products like this</a><br>
-           <button
-                   v-on:click="addToCart"
-                   :disabled="!inStock"
-                   :class="{ disabledButton: !inStock }"
-           >
-               Add to cart
-           </button>
-            <button v-on:click="removeFromCart">delete</button>
+
+            <button v-on:click="addToCart"
+                   :disabled="!canAddToCart"
+                   :class="{ disabledButton: !canAddToCart }"
+            >
+               {{ buttonText }}
+            </button>
+            
+            <button v-on:click="removeFromCart">delete last</button>
         </div>
         <product-tabs :reviews="reviews" :shipping-cost="shipping" :details="details"></product-tabs>
     </div> `,
     data() { return {
         product: "Socks",
         brand: 'Vue Mastery',
-        description: "A pair of warm, fuzzy socks",
         selectedVariant: 0,
+        selectedSize: '',
         altText: "A pair of socks",
-        link: "https://www.amazon.com/s/ref=nb_sb_noss?url=search-alias%3Daps&field-keywords=socks",
-        inStock: true,
-        inventory: 10,
-        onSale: true,
-        details: ['80% cotton', '20% polyester', 'Gender-neutral'],
+        details: ['90% cotton', '10% polyester', 'Gender-neutral'],
         variants: [
             {
                 variantId: 2234,
                 variantColor: 'green',
                 variantImage: "./assets/vmSocks-green-onWhite.jpg",
-                variantQuantity: 10
+                variantPrice: 100,
+                sizes: [
+                    { name: '36-38', qty: 3 }, 
+                    { name: '40-42', qty: 2 },
+                    { name: '44-46', qty: 0 }
+                ]
             },
             {
                 variantId: 2235,
                 variantColor: 'blue',
                 variantImage: "./assets/vmSocks-blue-onWhite.jpg",
-                variantQuantity: 0
+                variantPrice: 120,
+                sizes: [
+                    { name: '32-34', qty: 5 },
+                    { name: '36-38', qty: 0 },
+                    { name: '40-42', qty: 1 } 
+                ]
             }
         ],
-
-        sizes: ['32-34', '36-38', '40-42', '44-46', '48-50', '52-54'],
-        cart: [],
         reviews: [],
-
     }},
     methods: {
         addToCart() {
-            this.$emit('add-to-cart', this.variants[this.selectedVariant].variantId);
+            const variant = this.variants[this.selectedVariant];
+            const sizeObj = variant.sizes.find(s => s.name === this.selectedSize);
+
+            if (sizeObj && sizeObj.qty > 0) {
+                sizeObj.qty--;
+
+                this.$emit('add-to-cart', {
+                    id: variant.variantId,
+                    price: variant.variantPrice
+                });
+            }
         },
         removeFromCart() {
             this.$emit('remove-from-cart', this.variants[this.selectedVariant].variantId);
         },
         updateProduct(index) {
             this.selectedVariant = index;
-            console.log(index);
+            this.selectedSize = '';
+        },
+        selectSize(sizeObj) {
+            if (sizeObj.qty > 0) {
+                this.selectedSize = sizeObj.name;
+            }
         }
     },
     mounted() {
@@ -260,37 +211,50 @@ Vue.component('product', {
         image() {
             return this.variants[this.selectedVariant].variantImage;
         },
-        inStock() {
-            return this.variants[this.selectedVariant].variantQuantity > 0;
-        },
-        sale(){
-            if (this.onSale === true)
-                return this.brand + ' sells ' + this.product + ' with 50% discount!';
+        price() {
+            return this.variants[this.selectedVariant].variantPrice;
         },
         shipping() {
-            if (this.premium) {
-                return "Free";
-            } else {
-                return 2.99
-            }
+            if (this.premium) return "Free";
+            return 2.99;
         },
+        currentSizeQty() {
+            if (!this.selectedSize) return 0;
+            const size = this.variants[this.selectedVariant].sizes.find(s => s.name === this.selectedSize);
+            return size ? size.qty : 0;
+        },
+        canAddToCart() {
+            return this.selectedSize !== '' && this.currentSizeQty > 0;
+        },
+        // Текст кнопки
+        buttonText() {
+            if (this.selectedSize === '') return 'Select Size';
+            if (this.currentSizeQty === 0) return 'Out of Stock';
+            return 'Add to cart';
+        }
     },
 })
+
 let app = new Vue({
     el: '#app',
     data: {
         premium: true,
         cart: [],
     },
+    computed: {
+        cartTotal() {
+            return this.cart.reduce((sum, item) => sum + item.price, 0);
+        }
+    },
     methods: {
-        updateCart(id) {
-            this.cart.push(id);
+        updateCart(product) {
+            this.cart.push(product);
         },
         updateRemove(id) {
-            this.cart.pop(id);
-        },
-        addReview(productReview) {
-            this.reviews.push(productReview)
-        },
+            const index = this.cart.findIndex(item => item.id === id);
+            if (index !== -1) {
+                this.cart.splice(index, 1);
+            }
+        }
     }
 })
